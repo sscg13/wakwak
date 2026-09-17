@@ -272,6 +272,18 @@ impl Params {
     }
 
     #[inline]
+    pub const fn lmp(
+        depth: i32,
+        normal_count: u16,
+        duck_count: u8,
+        is_quiet: bool,
+        improving: bool,
+    ) -> bool {
+        duck_count >= Self::ldp_threshold(depth, is_quiet, improving) as u8
+            || normal_count as i32 > depth * depth + 4
+    }
+
+    #[inline]
     pub const fn dcp_threshold(depth: i32, improving: bool) -> i32 {
         if improving {
             Self::dcp_threshold_imp_base() + Self::dcp_threshold_imp_scale() * depth

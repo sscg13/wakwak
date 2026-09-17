@@ -368,6 +368,8 @@ fn search<Node: NodeType>(
     let mut best_score = None;
     let mut legal_moves = 0;
     let mut searched_moves = 0;
+    let mut normal_moves: u16 = 0;
+    let mut normal_move_ranks = [[0u16; Square::COUNT]; Square::COUNT];
     let mut failed_quiets = Vec::new();
     let mut failed_noisies = Vec::new();
     let prune_neutral_ducks =
@@ -408,9 +410,19 @@ fn search<Node: NodeType>(
         a certain move, we can be reasonably confident they're not gonna get
         much better, so we can skip the rest of them.
         */
+        if normal_move_ranks[src][dest] == 0 {
+            normal_moves += 1;
+            normal_move_ranks[src][dest] = normal_moves;
+        }
         if safe == Bitboard::FULL
             && depth <= Params::ldp_depth(is_quiet)
-            && ducks_by_move[src][dest] >= Params::ldp_threshold(depth, is_quiet, improving) as u8
+            && Params::lmp(
+                depth,
+                normal_move_ranks[src][dest],
+                ducks_by_move[src][dest],
+                is_quiet,
+                improving,
+            )
         {
             continue;
         }
