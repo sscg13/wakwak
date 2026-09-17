@@ -8,6 +8,7 @@ use crate::search::tt::TTFlag;
 use crate::search::{
     MAX_PLY, MovePicker, Params, PrincipalVariation, SearchInfo, SharedData, ThreadData,
 };
+use std::collections::HashMap;
 use std::sync::atomic::Ordering;
 
 #[derive(Debug, Clone, Default)]
@@ -326,6 +327,7 @@ fn search<Node: NodeType>(
     let mut best_score = None;
     let mut legal_moves = 0;
     let mut searched_moves = 0;
+    let mut lmr_ranks = HashMap::new();
     let mut failed_quiets = Vec::new();
     let mut failed_noisies = Vec::new();
     let mut move_picker = MovePicker::new(tt_move);
@@ -399,11 +401,21 @@ fn search<Node: NodeType>(
             thread.stack[ply + 1].mv = None;
             Score::mated(ply + 2)
         } else {
+            let (normal_rank, duck_rank) = if depth >= 3 {
+                let rank = lmr_ranks.len() + 1;
+                let entry = lmr_ranks
+                    .entry(mv.raw().get() & !(0x3f << 12))
+                    .or_insert((rank, 0));
+                entry.1 += 1;
+                *entry
+            } else {
+                (0, 0)
+            };
             let new_depth = depth - 1;
             let mut score = -Score::INFINITE;
             if !Node::PV || legal_moves > 1 {
                 let reduction = if depth >= 3 && searched_moves > 6 && is_quiet {
-                    1
+                    Params::lmr(depth, normal_rank, duck_rank)
                 } else {
                     0
                 };

@@ -2,6 +2,27 @@ use crate::common::Piece;
 #[cfg(feature = "tune")]
 use crate::uci::UciParseError;
 use std::cell::UnsafeCell;
+use std::sync::LazyLock;
+
+const LMR_RANKS: usize = 65;
+const LMR_DEPTHS: usize = crate::search::MAX_DEPTH as usize + 1;
+
+static LMR_TABLE: LazyLock<Vec<[[u8; LMR_RANKS]; LMR_RANKS]>> = LazyLock::new(|| {
+    let mut table = vec![[[0; LMR_RANKS]; LMR_RANKS]; LMR_DEPTHS];
+    for (depth, layer) in table.iter_mut().enumerate().skip(3) {
+        for (normal, row) in layer.iter_mut().enumerate().skip(1) {
+            for (duck, reduction) in row.iter_mut().enumerate().skip(1) {
+                let r = 0.5
+                    + 0.2
+                        * (depth as f64).ln()
+                        * ((normal + 1) as f64).ln()
+                        * ((duck + 1) as f64).ln();
+                *reduction = (r.floor() as usize).min(depth - 2) as u8;
+            }
+        }
+    }
+    table
+});
 
 // `std::cell::SyncUnsafeCell` is nightly only
 pub struct SyncUnsafeCell<T>(pub UnsafeCell<T>);
@@ -137,6 +158,12 @@ params! {
 }
 
 impl Params {
+    #[inline]
+    pub fn lmr(depth: i32, normal: usize, duck: usize) -> i32 {
+        let depth = depth.clamp(0, (LMR_DEPTHS - 1) as i32) as usize;
+        LMR_TABLE[depth][normal.min(LMR_RANKS - 1)][duck.min(LMR_RANKS - 1)] as i32
+    }
+
     #[inline]
     pub fn corr_bonus(depth: i32, diff: i64) -> i32 {
         (diff * depth as i64 * Params::corr_bonus_scale() / 1024) as i32
