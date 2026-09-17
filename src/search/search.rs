@@ -368,6 +368,9 @@ fn search<Node: NodeType>(
     let mut best_score = None;
     let mut legal_moves = 0;
     let mut searched_moves = 0;
+    let mut normal_moves: u8 = 0;
+    let mut normal_move_ranks: [[u8; Square::COUNT]; Square::COUNT] =
+        [[0; Square::COUNT]; Square::COUNT];
     let mut failed_quiets = Vec::new();
     let mut failed_noisies = Vec::new();
     let prune_neutral_ducks =
@@ -428,6 +431,12 @@ fn search<Node: NodeType>(
             continue;
         }
 
+        if normal_move_ranks[src][dest] == 0 {
+            normal_moves += 1;
+            normal_move_ranks[src][dest] = normal_moves;
+        }
+        let normal_rank = normal_move_ranks[src][dest];
+
         ducks_by_move[src][dest] += 1;
         duck_counts[duck] += 1;
         pos.make_move(mv);
@@ -447,7 +456,11 @@ fn search<Node: NodeType>(
             let mut score = -Score::INFINITE;
             if !Node::PV || legal_moves > 1 {
                 let reduction = if depth >= 3 && searched_moves > 6 && is_quiet {
-                    1 + !improving as i32
+                    thread.lmr.base(
+                        depth,
+                        normal_rank as usize,
+                        ducks_by_move[src][dest] as usize,
+                    ) + !improving as i32
                 } else {
                     0
                 };

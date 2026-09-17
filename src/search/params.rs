@@ -140,6 +140,9 @@ params! {
 
     ndp_depth: i32 => 8;
 
+    lmr_base: i32 => 90;
+    lmr_div:  i32 => 333;
+
     qsldp_threshold: i32 => 2;
     qsdcp_threshold: i32 => 2;
 
