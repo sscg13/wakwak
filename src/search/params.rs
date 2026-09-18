@@ -280,7 +280,7 @@ impl Params {
         improving: bool,
     ) -> bool {
         duck_count >= Self::ldp_threshold(depth, is_quiet, improving) as u8
-            || normal_count as i32 > depth * depth + 4
+            || normal_count as i32 > depth * depth + depth + 4
     }
 
     #[inline]
